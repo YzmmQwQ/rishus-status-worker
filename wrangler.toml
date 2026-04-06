@@ -6,8 +6,5 @@ compatibility_date = "2026-04-06"
 binding = "SERVER_STATUS"
 id = "63aa39549d9b4e9dba8f920079a81e7f"
 
-[vars]
-WEBSITES = """[{"name":"YZMM","url":"https://yz-mm.top"},{"name":"Rishu","url":"https://rishu.cfd"}]"""
-MC_SERVERS = """[{"name":"Finaless","host":"mc.yz-mm.top","port":25565,"infoUrl":"https://docs.rishu.cfd/learn-more/mc-server.html#finaless"}]"""
-
 # UPDATE_TOKEN 和 UAPI_KEY 用 Secret 类型，在 Dashboard 配置
+# config 存储在 KV 中，格式：{"websites":[...],"mcServers":[...]}
