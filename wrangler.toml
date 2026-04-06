@@ -1,0 +1,13 @@
+name = "rishus-status"
+main = "index.js"
+compatibility_date = "2026-4-6"
+
+[[kv_namespaces]]
+binding = "SERVER_STATUS"
+id = "rishus-status"
+
+# 以下在 Cloudflare Dashboard → Settings → Variables 里配置：
+# MC_SERVERS - MC 服务器列表
+# WEBSITES - 网站列表
+# UPDATE_TOKEN - Agent 认证令牌 (Secret)
+# UAPI_KEY - UAPI 密钥 (Secret)
