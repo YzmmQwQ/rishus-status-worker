@@ -4,8 +4,8 @@
  */
 
 const MC_API = 'https://uapis.cn/api/v1/game/minecraft/serverstatus';
-const MC_CACHE_TTL = 20; // MC 服务器缓存 20 秒
-const WEBSITE_CACHE_TTL = 10; // 网站状态缓存 10 秒
+const MC_CACHE_TTL = 60; // MC 服务器缓存 60 秒（KV 最小值）
+const WEBSITE_CACHE_TTL = 60; // 网站状态缓存 60 秒（KV 最小值）
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
