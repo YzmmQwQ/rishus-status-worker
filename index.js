@@ -92,24 +92,11 @@ export default {
         const path = url.pathname;
 
         try {
-            // 调试：显示所有环境变量
-            if (path === '/api/debug') {
-                return jsonResponse({
-                    WEBSITES_type: typeof env.WEBSITES,
-                    WEBSITES_value: env.WEBSITES,
-                    MC_SERVERS_type: typeof env.MC_SERVERS,
-                    MC_SERVERS_value: env.MC_SERVERS
-                });
-            }
-
             // 获取网站状态
             if (path === '/api/websites') {
-                let websitesRaw = env.WEBSITES || '[]';
-                // 移除转义的反斜杠
-                if (typeof websitesRaw === 'string') {
-                    websitesRaw = websitesRaw.replace(/\\/g, '');
-                }
-                const websites = typeof websitesRaw === 'string' ? JSON.parse(websitesRaw) : websitesRaw;
+                // 从 KV 读取配置
+                const config = await env.SERVER_STATUS.get('config', { type: 'json' }) || {};
+                const websites = config.websites || [];
                 const updatedAt = Date.now();
                 const results = await Promise.all(websites.map(async (site, i) => {
                     const cacheKey = `website:${i}`;
@@ -135,12 +122,9 @@ export default {
 
             // 获取 MC 服务器状态（带缓存）
             if (path === '/api/minecraft') {
-                let serversRaw = env.MC_SERVERS || '[]';
-                // 移除转义的反斜杠
-                if (typeof serversRaw === 'string') {
-                    serversRaw = serversRaw.replace(/\\/g, '');
-                }
-                const servers = typeof serversRaw === 'string' ? JSON.parse(serversRaw) : serversRaw;
+                // 从 KV 读取配置
+                const config = await env.SERVER_STATUS.get('config', { type: 'json' }) || {};
+                const servers = config.mcServers || [];
                 const updatedAt = Date.now();
                 const results = [];
 
