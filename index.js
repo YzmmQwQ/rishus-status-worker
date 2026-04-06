@@ -92,6 +92,16 @@ export default {
         const path = url.pathname;
 
         try {
+            // 调试：显示所有环境变量
+            if (path === '/api/debug') {
+                return jsonResponse({
+                    WEBSITES_type: typeof env.WEBSITES,
+                    WEBSITES_value: env.WEBSITES,
+                    MC_SERVERS_type: typeof env.MC_SERVERS,
+                    MC_SERVERS_value: env.MC_SERVERS
+                });
+            }
+
             // 获取网站状态
             if (path === '/api/websites') {
                 const websitesRaw = env.WEBSITES || '[]';
