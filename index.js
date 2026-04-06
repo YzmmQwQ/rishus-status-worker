@@ -104,19 +104,10 @@ export default {
 
             // 获取网站状态
             if (path === '/api/websites') {
-                const websitesRaw = env.WEBSITES || '[]';
-                if (typeof websitesRaw === 'string') {
-                    try {
-                        JSON.parse(websitesRaw);
-                    } catch (e) {
-                        return jsonResponse({
-                            success: false,
-                            error: 'WEBSITES parse failed',
-                            rawType: typeof websitesRaw,
-                            rawValue: websitesRaw,
-                            parseError: e.message
-                        }, 500);
-                    }
+                let websitesRaw = env.WEBSITES || '[]';
+                // 处理 Cloudflare 自动转义的 JSON 字符串
+                if (typeof websitesRaw === 'string' && websitesRaw.includes('\\"')) {
+                    websitesRaw = websitesRaw.replace(/\\"/g, '"');
                 }
                 const websites = typeof websitesRaw === 'string' ? JSON.parse(websitesRaw) : websitesRaw;
                 const updatedAt = Date.now();
@@ -144,19 +135,10 @@ export default {
 
             // 获取 MC 服务器状态（带缓存）
             if (path === '/api/minecraft') {
-                const serversRaw = env.MC_SERVERS || '[]';
-                if (typeof serversRaw === 'string') {
-                    try {
-                        JSON.parse(serversRaw);
-                    } catch (e) {
-                        return jsonResponse({
-                            success: false,
-                            error: 'MC_SERVERS parse failed',
-                            rawType: typeof serversRaw,
-                            rawValue: serversRaw,
-                            parseError: e.message
-                        }, 500);
-                    }
+                let serversRaw = env.MC_SERVERS || '[]';
+                // 处理 Cloudflare 自动转义的 JSON 字符串
+                if (typeof serversRaw === 'string' && serversRaw.includes('\\"')) {
+                    serversRaw = serversRaw.replace(/\\"/g, '"');
                 }
                 const servers = typeof serversRaw === 'string' ? JSON.parse(serversRaw) : serversRaw;
                 const updatedAt = Date.now();
