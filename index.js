@@ -94,7 +94,16 @@ export default {
         try {
             // 获取网站状态
             if (path === '/api/websites') {
-                const websites = JSON.parse(env.WEBSITES || '[]');
+                // 调试：打印原始值
+                console.log('WEBSITES raw:', env.WEBSITES);
+                console.log('WEBSITES type:', typeof env.WEBSITES);
+
+                let websites;
+                try {
+                    websites = JSON.parse(env.WEBSITES || '[]');
+                } catch (e) {
+                    return jsonResponse({ success: false, error: 'JSON parse error: ' + e.message, raw: env.WEBSITES });
+                }
                 const updatedAt = Date.now();
                 const results = await Promise.all(websites.map(async (site, i) => {
                     const cacheKey = `website:${i}`;
