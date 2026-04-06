@@ -95,7 +95,19 @@ export default {
             // 获取网站状态
             if (path === '/api/websites') {
                 const websitesRaw = env.WEBSITES || '[]';
-                console.log('WEBSITES raw type:', typeof websitesRaw, 'value:', websitesRaw);
+                if (typeof websitesRaw === 'string') {
+                    try {
+                        JSON.parse(websitesRaw);
+                    } catch (e) {
+                        return jsonResponse({
+                            success: false,
+                            error: 'WEBSITES parse failed',
+                            rawType: typeof websitesRaw,
+                            rawValue: websitesRaw,
+                            parseError: e.message
+                        }, 500);
+                    }
+                }
                 const websites = typeof websitesRaw === 'string' ? JSON.parse(websitesRaw) : websitesRaw;
                 const updatedAt = Date.now();
                 const results = await Promise.all(websites.map(async (site, i) => {
@@ -123,7 +135,19 @@ export default {
             // 获取 MC 服务器状态（带缓存）
             if (path === '/api/minecraft') {
                 const serversRaw = env.MC_SERVERS || '[]';
-                console.log('MC_SERVERS raw type:', typeof serversRaw, 'value:', serversRaw);
+                if (typeof serversRaw === 'string') {
+                    try {
+                        JSON.parse(serversRaw);
+                    } catch (e) {
+                        return jsonResponse({
+                            success: false,
+                            error: 'MC_SERVERS parse failed',
+                            rawType: typeof serversRaw,
+                            rawValue: serversRaw,
+                            parseError: e.message
+                        }, 500);
+                    }
+                }
                 const servers = typeof serversRaw === 'string' ? JSON.parse(serversRaw) : serversRaw;
                 const updatedAt = Date.now();
                 const results = [];
