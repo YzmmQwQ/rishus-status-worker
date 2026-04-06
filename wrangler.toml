@@ -7,7 +7,7 @@ binding = "SERVER_STATUS"
 id = "63aa39549d9b4e9dba8f920079a81e7f"
 
 [vars]
-WEBSITES = [{ name = "一只铭铭的小站", url = "https://yz-mm.top" }, { name = "Rishuですわ.", url = "https://rishu.cfd" }]
-MC_SERVERS = [{ name = "Finaless", host = "mc.yz-mm.top", port = 25565, infoUrl = "https://docs.rishu.cfd/learn-more/mc-server.html#finaless" }, { name = "TradeCraft", host = "mc.781391.cc", port = 25565, infoUrl = "https://docs.rishu.cfd/learn-more/mc-server.html#tradecraft" }]
+WEBSITES = """[{"name":"YZMM","url":"https://yz-mm.top"},{"name":"Rishu","url":"https://rishu.cfd"}]"""
+MC_SERVERS = """[{"name":"Finaless","host":"mc.yz-mm.top","port":25565,"infoUrl":"https://docs.rishu.cfd/learn-more/mc-server.html#finaless"}]"""
 
 # UPDATE_TOKEN 和 UAPI_KEY 用 Secret 类型，在 Dashboard 配置
