@@ -105,11 +105,18 @@ export default {
             // 获取网站状态
             if (path === '/api/websites') {
                 let websitesRaw = env.WEBSITES || '[]';
-                // 处理 Cloudflare 自动转义的 JSON 字符串
-                if (typeof websitesRaw === 'string' && websitesRaw.includes('\\"')) {
-                    websitesRaw = websitesRaw.replace(/\\"/g, '"');
+                let websites;
+                try {
+                    websites = typeof websitesRaw === 'string' ? JSON.parse(websitesRaw) : websitesRaw;
+                } catch (e) {
+                    return jsonResponse({
+                        success: false,
+                        error: 'JSON parse failed',
+                        message: e.message,
+                        rawLength: websitesRaw.length,
+                        firstChars: websitesRaw.substring(0, 50)
+                    }, 500);
                 }
-                const websites = typeof websitesRaw === 'string' ? JSON.parse(websitesRaw) : websitesRaw;
                 const updatedAt = Date.now();
                 const results = await Promise.all(websites.map(async (site, i) => {
                     const cacheKey = `website:${i}`;
@@ -136,11 +143,18 @@ export default {
             // 获取 MC 服务器状态（带缓存）
             if (path === '/api/minecraft') {
                 let serversRaw = env.MC_SERVERS || '[]';
-                // 处理 Cloudflare 自动转义的 JSON 字符串
-                if (typeof serversRaw === 'string' && serversRaw.includes('\\"')) {
-                    serversRaw = serversRaw.replace(/\\"/g, '"');
+                let servers;
+                try {
+                    servers = typeof serversRaw === 'string' ? JSON.parse(serversRaw) : serversRaw;
+                } catch (e) {
+                    return jsonResponse({
+                        success: false,
+                        error: 'JSON parse failed',
+                        message: e.message,
+                        rawLength: serversRaw.length,
+                        firstChars: serversRaw.substring(0, 50)
+                    }, 500);
                 }
-                const servers = typeof serversRaw === 'string' ? JSON.parse(serversRaw) : serversRaw;
                 const updatedAt = Date.now();
                 const results = [];
 
