@@ -95,6 +95,7 @@ export default {
             // 获取网站状态
             if (path === '/api/websites') {
                 const websitesRaw = env.WEBSITES || '[]';
+                console.log('WEBSITES raw type:', typeof websitesRaw, 'value:', websitesRaw);
                 const websites = typeof websitesRaw === 'string' ? JSON.parse(websitesRaw) : websitesRaw;
                 const updatedAt = Date.now();
                 const results = await Promise.all(websites.map(async (site, i) => {
@@ -122,6 +123,7 @@ export default {
             // 获取 MC 服务器状态（带缓存）
             if (path === '/api/minecraft') {
                 const serversRaw = env.MC_SERVERS || '[]';
+                console.log('MC_SERVERS raw type:', typeof serversRaw, 'value:', serversRaw);
                 const servers = typeof serversRaw === 'string' ? JSON.parse(serversRaw) : serversRaw;
                 const updatedAt = Date.now();
                 const results = [];
