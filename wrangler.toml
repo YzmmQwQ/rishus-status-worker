@@ -4,7 +4,7 @@ compatibility_date = "2026-4-6"
 
 [[kv_namespaces]]
 binding = "SERVER_STATUS"
-id = "63aa39549d9b4e9dba8f920079a81e7f
+id = "63aa39549d9b4e9dba8f920079a81e7f"
 
 # 以下在 Cloudflare Dashboard → Settings → Variables 里配置：
 # MC_SERVERS - MC 服务器列表
