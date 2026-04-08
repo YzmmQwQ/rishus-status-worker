@@ -6,12 +6,13 @@
 const MC_API = 'https://uapis.cn/api/v1/game/minecraft/serverstatus';
 const MC_CACHE_TTL = 60; // MC 服务器缓存 60 秒（KV 最小值）
 const WEBSITE_CACHE_TTL = 60; // 网站状态缓存 60 秒（KV 最小值）
-const CONFIG_CACHE_TTL = 60; // 配置缓存 60 秒
+const API_CACHE_TTL = 60; // API 响应缓存 60 秒
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Cache-Control': 'public, max-age=60',
 };
 
 // 配置缓存（全局变量，跨请求共享）
@@ -20,7 +21,7 @@ let configCacheTime = 0;
 
 async function getConfig(env) {
     const now = Date.now();
-    if (configCache && (now - configCacheTime) < CONFIG_CACHE_TTL * 1000) {
+    if (configCache && (now - configCacheTime) < API_CACHE_TTL * 1000) {
         return configCache;
     }
     configCache = await env.SERVER_STATUS.get('config', { type: 'json' }) || {};
