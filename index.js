@@ -6,12 +6,27 @@
 const MC_API = 'https://uapis.cn/api/v1/game/minecraft/serverstatus';
 const MC_CACHE_TTL = 60; // MC 服务器缓存 60 秒（KV 最小值）
 const WEBSITE_CACHE_TTL = 60; // 网站状态缓存 60 秒（KV 最小值）
+const CONFIG_CACHE_TTL = 60; // 配置缓存 60 秒
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
+
+// 配置缓存（全局变量，跨请求共享）
+let configCache = null;
+let configCacheTime = 0;
+
+async function getConfig(env) {
+    const now = Date.now();
+    if (configCache && (now - configCacheTime) < CONFIG_CACHE_TTL * 1000) {
+        return configCache;
+    }
+    configCache = await env.SERVER_STATUS.get('config', { type: 'json' }) || {};
+    configCacheTime = now;
+    return configCache;
+}
 
 function jsonResponse(data, status = 200) {
     return new Response(JSON.stringify(data), {
@@ -94,8 +109,7 @@ export default {
         try {
             // 获取网站状态
             if (path === '/api/websites') {
-                // 从 KV 读取配置
-                const config = await env.SERVER_STATUS.get('config', { type: 'json' }) || {};
+                const config = await getConfig(env);
                 const websites = config.websites || [];
                 const updatedAt = Date.now();
                 const results = await Promise.all(websites.map(async (site, i) => {
@@ -122,8 +136,7 @@ export default {
 
             // 获取 MC 服务器状态（带缓存）
             if (path === '/api/minecraft') {
-                // 从 KV 读取配置
-                const config = await env.SERVER_STATUS.get('config', { type: 'json' }) || {};
+                const config = await getConfig(env);
                 const servers = config.mcServers || [];
                 const updatedAt = Date.now();
                 const results = [];
