@@ -39,9 +39,14 @@ function processCpuData(rawCpu) {
         speed: rawCpu.speed || 0,
         physicalCores: physicalCores,
         threads: threads,
-        coresText: `${physicalCores}C${threads}H`,
+        coresText: rawCpu.hasHybrid && rawCpu.performanceCores && rawCpu.efficiencyCores
+            ? `${rawCpu.performanceCores}P+${rawCpu.efficiencyCores}E`
+            : `${physicalCores}C${threads}H`,
         gridLayout: calculateCpuGridLayout(threads),
-        coresLoad: rawCpu.coresLoad || []
+        coresLoad: rawCpu.coresLoad || [],
+        performanceCores: rawCpu.performanceCores || 0,
+        efficiencyCores: rawCpu.efficiencyCores || 0,
+        hasHybrid: rawCpu.hasHybrid || false
     };
 }
 
