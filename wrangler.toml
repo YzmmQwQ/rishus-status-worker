@@ -5,6 +5,6 @@ compatibility_date = "2026-04-06"
 [[d1_databases]]
 binding = "DB"
 database_name = "server-status"
-database_id = "你的D1数据库ID"
+database_id = "534f33d8-c189-4202-9b62-9871218a644c"
 
 # UPDATE_TOKEN 和 UAPI_KEY 用 Secret 类型，在 Dashboard 配置
