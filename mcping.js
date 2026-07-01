@@ -48,10 +48,43 @@ function extractMotd(desc) {
     return stripColorCodes(out);
 }
 
+// ---- SRV 解析（DoH）----
+// MC 域名常只配 _minecraft._tcp.<host> 的 SRV 记录（内网穿透 / 联机平台的随机端口），
+// 没有 A 记录。connect() 只解析 A 记录，所以要先查 SRV 拿到真实 target+port。
+async function resolveSRV(host) {
+    try {
+        const url = `https://1.1.1.1/dns-query?name=${encodeURIComponent('_minecraft._tcp.' + host)}&type=SRV`;
+        const res = await fetch(url, { headers: { accept: 'application/dns-json' } });
+        if (!res.ok) return null;
+        const data = await res.json();
+        const answers = (data.Answer || []).filter((a) => a.type === 33); // 33 = SRV
+        if (!answers.length) return null;
+        // 取优先级最高（priority 最小）的一条；data 形如 "0 5 64859 target.example.com."
+        answers.sort((a, b) => {
+            const pa = Number(a.data.split(' ')[0]);
+            const pb = Number(b.data.split(' ')[0]);
+            return pa - pb;
+        });
+        const parts = answers[0].data.trim().split(/\s+/);
+        const srvPort = Number(parts[2]);
+        let target = parts[3] || '';
+        target = target.replace(/\.$/, ''); // 去掉末尾的点
+        if (!target || !srvPort) return null;
+        return { target, port: srvPort };
+    } catch {
+        return null;
+    }
+}
+
 // ---- 主查询 ----
 export async function pingMC(host, port, timeoutMs = 5000) {
+    // 先查 SRV：查到就用真实 target+port 连，握手仍发原始域名（兼容虚拟主机）
+    const srv = await resolveSRV(host).catch(() => null);
+    const connectHost = srv ? srv.target : host;
+    const connectPort = srv ? srv.port : Number(port);
+
     const result = await Promise.race([
-        doPing(host, port),
+        doPing(connectHost, connectPort, host, Number(port)),
         new Promise((_, reject) =>
             setTimeout(() => reject(new Error('timeout')), timeoutMs)
         )
@@ -71,8 +104,9 @@ export async function pingMC(host, port, timeoutMs = 5000) {
     };
 }
 
-async function doPing(host, port) {
-    const socket = connect({ hostname: host, port: Number(port) });
+// connectHost/connectPort：实际 TCP 连接目标；handshakeHost/handshakePort：握手包里声明的地址
+async function doPing(connectHost, connectPort, handshakeHost, handshakePort) {
+    const socket = connect({ hostname: connectHost, port: Number(connectPort) });
     const writer = socket.writable.getWriter();
     const reader = socket.readable.getReader();
 
@@ -113,8 +147,8 @@ async function doPing(host, port) {
         const handshakeData = [
             ...writeVarInt(0x00),
             ...writeVarInt(-1),
-            ...writeString(host),
-            ...writeUShort(Number(port)),
+            ...writeString(handshakeHost),
+            ...writeUShort(Number(handshakePort)),
             ...writeVarInt(1)
         ];
         await writer.write(framePacket(handshakeData));
