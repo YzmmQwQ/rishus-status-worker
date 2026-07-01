@@ -1,10 +1,12 @@
 /**
  * Cloudflare Worker API - D1 Version
- * 缓存 MC 服务器状态，避免频繁请求 UAPI
+ * MC 服务器状态用原生协议（TCP 直连）查询，由 Cron 定时刷新写入 D1，端点纯只读。
  */
 
-const MC_API = 'https://uapis.cn/api/v1/game/minecraft/serverstatus';
+import { pingMC } from './mcping.js';
+
 const CACHE_TTL = 60; // 缓存 60 秒
+const FRESH_TTL = 3600; // Cron 刷新的数据兜底保留 1 小时，正常情况下每分钟被覆盖
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -50,25 +52,12 @@ function processCpuData(rawCpu) {
     };
 }
 
-// 查询单个 MC 服务器
-async function queryMCServer(host, port, apiKey) {
-    const address = port === 25565 ? host : `${host}:${port}`;
-    const headers = apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {};
-
+// 查询单个 MC 服务器（原生 Server List Ping，TCP 直连，无外部 API）
+async function queryMCServer(host, port) {
     try {
-        const response = await fetch(`${MC_API}?server=${address}`, { headers });
-        if (!response.ok) return { online: false };
-
-        const data = await response.json();
-        return {
-            online: data.online,
-            players: data.online ? { online: data.players, max: data.max_players } : null,
-            version: data.version,
-            motd: data.motd_clean,
-            playerList: data.online_players?.map(p => p.name) || []
-        };
+        return await pingMC(host, port);
     } catch {
-        return { online: false };
+        return { online: false, players: null, version: null, motd: null, playerList: [] };
     }
 }
 
@@ -156,7 +145,52 @@ async function initDb(db) {
     `);
 }
 
+// 只读取缓存，不触发上游查询；即使过期也返回（stale），供端点兜底
+async function readCache(db, key) {
+    const result = await db.prepare("SELECT value FROM cache WHERE key = ?")
+        .bind(key)
+        .first();
+    return result ? JSON.parse(result.value) : null;
+}
+
+// 查询所有 MC 服务器并写入缓存（由 Cron 调用）
+async function refreshMinecraft(db, env) {
+    const config = await getConfig(db);
+    const servers = config.mcServers || [];
+    const fetchedAt = Date.now();
+    await Promise.all(servers.map(async (server) => {
+        const cacheKey = `mc:${server.host}:${server.port}`;
+        const data = await queryMCServer(server.host, server.port);
+        await setCache(db, cacheKey, { ...data, _fetchedAt: fetchedAt }, FRESH_TTL);
+    }));
+}
+
+// 检测所有网站并写入缓存（由 Cron 调用）
+async function refreshWebsites(db, env) {
+    const config = await getConfig(db);
+    const websites = config.websites || [];
+    const fetchedAt = Date.now();
+    await Promise.all(websites.map(async (site, i) => {
+        const cacheKey = `website:${i}`;
+        const data = await checkWebsite(site.url);
+        await setCache(db, cacheKey, { ...data, _fetchedAt: fetchedAt }, FRESH_TTL);
+    }));
+}
+
 export default {
+    // Cron Trigger：每分钟主动刷新一次，上游查询次数与访问量解耦
+    async scheduled(event, env, ctx) {
+        try {
+            await initDb(env.DB);
+        } catch (e) {
+            // 表可能已存在
+        }
+        ctx.waitUntil(Promise.all([
+            refreshMinecraft(env.DB, env),
+            refreshWebsites(env.DB, env)
+        ]));
+    },
+
     async fetch(request, env, ctx) {
         if (request.method === 'OPTIONS') {
             return new Response(null, { headers: corsHeaders });
@@ -173,46 +207,38 @@ export default {
         }
 
         try {
-            // 获取网站状态
+            // 获取网站状态（纯只读，数据由 Cron 刷新）
             if (path === '/api/websites') {
                 const config = await getConfig(env.DB);
                 const websites = config.websites || [];
-                const updatedAt = Date.now();
+                let updatedAt = null;
                 const results = await Promise.all(websites.map(async (site, i) => {
-                    const cacheKey = `website:${i}`;
-                    let data = await getCache(env.DB, cacheKey);
-
-                    if (!data) {
-                        data = await checkWebsite(site.url);
-                        await setCache(env.DB, cacheKey, data, CACHE_TTL);
+                    const cached = await readCache(env.DB, `website:${i}`);
+                    if (cached?._fetchedAt) {
+                        updatedAt = updatedAt === null ? cached._fetchedAt : Math.min(updatedAt, cached._fetchedAt);
                     }
-
                     return {
                         name: site.name,
                         url: site.url,
-                        online: data.online,
-                        latency: data.latency
+                        online: cached?.online ?? false,
+                        latency: cached?.latency ?? null
                     };
                 }));
 
                 return jsonResponse({ success: true, websites: results, updatedAt });
             }
 
-            // 获取 MC 服务器状态（带缓存）
+            // 获取 MC 服务器状态（纯只读，数据由 Cron 刷新）
             if (path === '/api/minecraft') {
                 const config = await getConfig(env.DB);
                 const servers = config.mcServers || [];
-                const updatedAt = Date.now();
+                let updatedAt = null;
                 const results = [];
 
                 for (const server of servers) {
-                    const cacheKey = `mc:${server.host}:${server.port}`;
-
-                    let data = await getCache(env.DB, cacheKey);
-
-                    if (!data) {
-                        data = await queryMCServer(server.host, server.port, env.UAPI_KEY);
-                        await setCache(env.DB, cacheKey, data, CACHE_TTL);
+                    const cached = await readCache(env.DB, `mc:${server.host}:${server.port}`);
+                    if (cached?._fetchedAt) {
+                        updatedAt = updatedAt === null ? cached._fetchedAt : Math.min(updatedAt, cached._fetchedAt);
                     }
 
                     results.push({
@@ -220,11 +246,11 @@ export default {
                         host: server.host,
                         port: server.port,
                         infoUrl: server.infoUrl,
-                        online: data.online,
-                        players: data.players,
-                        version: data.version,
-                        motd: data.motd,
-                        playerList: data.playerList
+                        online: cached?.online ?? false,
+                        players: cached?.players ?? null,
+                        version: cached?.version ?? null,
+                        motd: cached?.motd ?? null,
+                        playerList: cached?.playerList ?? []
                     });
                 }
 

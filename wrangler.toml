@@ -7,4 +7,8 @@ binding = "DB"
 database_name = "server-status"
 database_id = "534f33d8-c189-4202-9b62-9871218a644c"
 
-# UPDATE_TOKEN 和 UAPI_KEY 用 Secret 类型，在 Dashboard 配置
+# 每分钟主动刷新 MC / 网站状态，对上游的请求次数与访问量解耦
+[triggers]
+crons = ["* * * * *"]
+
+# UPDATE_TOKEN 用 Secret 类型，在 Dashboard 配置（MC 查询已改为 TCP 直连，无需 API key）
