@@ -56,7 +56,8 @@ function processCpuData(rawCpu) {
 async function queryMCServer(host, port) {
     try {
         return await pingMC(host, port);
-    } catch {
+    } catch (error) {
+        console.warn(`Minecraft ping failed for ${host}:${port}:`, error?.message || error);
         return { online: false, players: null, version: null, motd: null, playerList: [] };
     }
 }

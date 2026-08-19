@@ -78,17 +78,24 @@ async function resolveSRV(host) {
 
 // ---- 主查询 ----
 export async function pingMC(host, port, timeoutMs = 5000) {
-    // 先查 SRV：查到就用真实 target+port 连，握手仍发原始域名（兼容虚拟主机）
+    // SRV 记录既决定实际连接目标，也决定握手中的地址和端口。
+    // 穿透/代理服务通常依赖握手地址路由到正确的后端；只替换 TCP 目标
+    // 而继续发送原始域名和 25565，会导致连接建立后仍拿不到状态响应。
     const srv = await resolveSRV(host).catch(() => null);
     const connectHost = srv ? srv.target : host;
     const connectPort = srv ? srv.port : Number(port);
+    const handshakeHost = srv ? srv.target : host;
+    const handshakePort = srv ? srv.port : Number(port);
 
     const result = await Promise.race([
-        doPing(connectHost, connectPort, host, Number(port)),
+        doPing(connectHost, connectPort, handshakeHost, handshakePort),
         new Promise((_, reject) =>
             setTimeout(() => reject(new Error('timeout')), timeoutMs)
         )
-    ]).catch(() => null);
+    ]).catch((error) => {
+        console.warn(`MC ping failed for ${host}:${port} (${connectHost}:${connectPort}):`, error?.message || error);
+        return null;
+    });
 
     if (!result) return { online: false, players: null, version: null, motd: null, playerList: [] };
 
@@ -143,10 +150,11 @@ async function doPing(connectHost, connectPort, handshakeHost, handshakePort) {
     }
 
     try {
-        // 1) Handshake 包：packetId(0) + protocol(-1) + host + port + nextState(1=status)
+        // 1) Handshake 包：packetId(0) + protocol(47) + host + port + nextState(1=status)
+        // 47 是 Server List Ping 常用的兼容协议号，服务端状态查询不依赖具体版本。
         const handshakeData = [
             ...writeVarInt(0x00),
-            ...writeVarInt(-1),
+            ...writeVarInt(47),
             ...writeString(handshakeHost),
             ...writeUShort(Number(handshakePort)),
             ...writeVarInt(1)
